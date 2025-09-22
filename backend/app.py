@@ -17,6 +17,11 @@ from flask import Flask, redirect, request, session, jsonify
 import requests
 from dotenv import load_dotenv
 
+@app.route('/')
+@app.route('/home')
+def home():
+    return render_template()
+
 load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")
