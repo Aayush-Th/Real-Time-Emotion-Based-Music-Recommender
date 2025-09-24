@@ -17,10 +17,12 @@ from flask import Flask, redirect, request, session, jsonify
 import requests
 from dotenv import load_dotenv
 
+app = Flask(__name__)
+
 @app.route('/')
 @app.route('/home')
 def home():
-    return render_template()
+    return "welcome to real time emotion based music recommender"
 
 load_dotenv()
 app = Flask(__name__)
