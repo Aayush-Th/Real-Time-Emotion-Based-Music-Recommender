@@ -160,5 +160,5 @@ def recommend():
     ]
     return jsonify({"emotion": emotion, "params": params, "tracks": tracks})
 
-if __name__ == "__main__":
-    app.run(debug=True)
+# if __name__ == "__main__":
+#     app.run(debug=True)
