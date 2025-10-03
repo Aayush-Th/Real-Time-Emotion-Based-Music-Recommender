@@ -16,6 +16,7 @@ from urllib.parse import urlencode
 from flask import Flask, redirect, request, session, jsonify
 import requests
 from dotenv import load_dotenv
+from flask_cors import CORS 
 
 app = Flask(__name__)
 
