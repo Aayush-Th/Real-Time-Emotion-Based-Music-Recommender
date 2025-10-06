@@ -42,6 +42,7 @@ EMOTION_MAPPING = {
     "happy":  dict(target_valence=0.85, target_energy=0.7, seed_genres=["pop","dance"]),
     "sad":    dict(target_valence=0.2,  target_energy=0.3, seed_genres=["acoustic","indie"]),
     "angry":  dict(target_valence=0.2,  target_energy=0.85,seed_genres=["metal","rock"]),
+    "disgust":dict(target_valence=0.1,  target_energy=0.4, seed_genres=["punk","grunge"]),
     "fear":   dict(target_valence=0.25, target_energy=0.6, seed_genres=["ambient","classical"]),
     "surprise":dict(target_valence=0.7, target_energy=0.8, seed_genres=["edm","electronic"]),
     "neutral":dict(target_valence=0.5,  target_energy=0.5, seed_genres=["chill","lofi"]),
