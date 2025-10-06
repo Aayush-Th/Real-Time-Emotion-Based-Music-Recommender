@@ -1,18 +1,16 @@
-import { useState } from 'react'
-import { Home } from './pages/Home'
-import './App.css'
+import React from 'react';
+import navbar from './components/navbar';
+import main from './components/main';
+import footer from './components/footer';
 
-function App() {
-  
-
+const App = () => {
   return (
-    <>
-      <browserouter>
-      
-      </browserouter>
-      
-    </>
-  )
-}
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      <navbar />
+      <main />
+      <footer />
+    </div>
+  );
+};
 
-export default App
+export default App;
