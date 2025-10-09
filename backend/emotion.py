@@ -11,4 +11,4 @@ emotion = ["angry", "disgust", "fear", "happy", "sad", "surprise", "neutral"]
 
 image_path = "path/to/your/image.jpg"
 
-emotion = DeepFace.analyse(image_path, actions=['emotion'])
+result = DeepFace.analyse(image_path, actions=['emotion'])
