@@ -2,9 +2,16 @@ import React from 'react';
 
 const Navbar = () => {
   return (
-    <nav style={{ background: '#333', padding: '1rem', color: '#fff' }}>
-      <h2>My App</h2>
-    </nav>
+   <span>
+    <ul>
+      <li>Home</li>
+      <li>About</li>
+      <li>Contact</li>
+      <li><button>Login</button></li>
+      <li><button>Signup</button></li>
+      <li><button>Get Started</button></li>
+    </ul>
+   </span>
   );
 };
 
