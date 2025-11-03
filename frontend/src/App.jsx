@@ -1,20 +1,11 @@
-import React from 'react';
-import navbar from './components/navbar';
-import main from './components/main';
-import footer from './components/footer';
-import control from './components/control';
-import Loader from './components/Loader';
+import React from 'react'
 
-const App = () => {
+function App() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <navbar />
-      <control />
-      <Loader />
-      <main />
-      <footer />
+    <div>
+      
     </div>
-  );
-};
+  )
+}
 
-export default App;
+export default App
