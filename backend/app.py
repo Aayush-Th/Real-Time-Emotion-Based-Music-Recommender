@@ -1,51 +1,55 @@
-# from flask import Flask,render_template,requests,redirect,flash
-# import sys
-
-
-# def create_app():
-#     app = Flask(__name__)
-
-# # @app.route('/')
-# # @app.route('/home')
-# def home():
-#     return render_template('home.html')
-
-    
-import os, time, base64
+import os
+import time
+import base64
 from urllib.parse import urlencode
-from flask import Flask, redirect, request, session, jsonify
-import requests
+
 from dotenv import load_dotenv
-from flask_cors import CORS 
+from flask import Flask, redirect, request, session, jsonify
+from flask_cors import CORS
+import requests
 
-app = Flask(__name__)
-
-@app.route('/')
-@app.route('/home')
-def home():
-    return "welcome to real time emotion based music recommender"
+from db import init_db
+from recommendations import get_recommendations_for_emotion
+from routes import emotion_bp
 
 load_dotenv()
+
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")
 
-SPOTIFY_CLIENT_ID = os.environ["SPOTIFY_CLIENT_ID"]
-SPOTIFY_CLIENT_SECRET = os.environ["SPOTIFY_CLIENT_SECRET"]
+CORS(
+    app,
+    resources={r"/api/*": {"origins": os.environ.get("BACKEND_CORS_ORIGINS", "*")}},
+    supports_credentials=True,
+)
+
+init_db()
+
+@app.route("/")
+@app.route("/home")
+def home():
+    return "welcome to real time emotion based music recommender"
+
+SPOTIFY_CLIENT_ID = os.environ.get("SPOTIFY_CLIENT_ID")
+SPOTIFY_CLIENT_SECRET = os.environ.get("SPOTIFY_CLIENT_SECRET")
 SPOTIFY_REDIRECT_URI = os.environ.get("SPOTIFY_REDIRECT_URI", "http://localhost:5000/callback")
 SPOTIFY_AUTH_URL = "https://accounts.spotify.com/authorize"
 SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token"
 SPOTIFY_API_BASE = "https://api.spotify.com/v1"
+SPOTIFY_ENABLED = bool(SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET)
 
 # Simple emotion -> audio feature mapping
 # Targets follow literature (valence ~ positivity, energy ~ arousal); seed genres guide mood. [9]
 EMOTION_MAPPING = {
-    "happy":  dict(target_valence=0.85, target_energy=0.7, seed_genres=["pop","dance"]),
-    "sad":    dict(target_valence=0.2,  target_energy=0.3, seed_genres=["acoustic","indie"]),
-    "angry":  dict(target_valence=0.2,  target_energy=0.85,seed_genres=["metal","rock"]),
-    "disgust":dict(target_valence=0.1,  target_energy=0.4, seed_genres=["punk","grunge"]),
-    "fear":   dict(target_valence=0.25, target_energy=0.6, seed_genres=["ambient","classical"]),
-    "surprise":dict(target_valence=0.7, target_energy=0.8, seed_genres=["edm","electronic"]),
-    "neutral":dict(target_valence=0.5,  target_energy=0.5, seed_genres=["chill","lofi"]),
+    "happy": dict(target_valence=0.85, target_energy=0.7, seed_genres=["pop", "dance"]),
+    "sad": dict(target_valence=0.2, target_energy=0.3, seed_genres=["acoustic", "indie"]),
+    "angry": dict(target_valence=0.2, target_energy=0.85, seed_genres=["metal", "rock"]),
+    "disgust": dict(target_valence=0.1, target_energy=0.4, seed_genres=["punk", "grunge"]),
+    "fear": dict(target_valence=0.25, target_energy=0.6, seed_genres=["ambient", "classical"]),
+    "surprise": dict(
+        target_valence=0.7, target_energy=0.8, seed_genres=["edm", "electronic"]
+    ),
+    "neutral": dict(target_valence=0.5, target_energy=0.5, seed_genres=["chill", "lofi"]),
 }
 
 # Optional: add constraints supported by Spotify recommendations (danceability, acousticness, loudness, tempo) [9]
@@ -55,14 +59,19 @@ def build_target_params(emotion_cfg):
         "target_energy": emotion_cfg["target_energy"],
     }
     # Example heuristics: more acoustic for sad/fear; more danceable for happy/surprise. [9]
-    if emotion_cfg["seed_genres"] in ("acoustic","indie","ambient","classical"):
+    if emotion_cfg["seed_genres"] in ("acoustic", "indie", "ambient", "classical"):
         params["max_loudness"] = -5
         params["target_acousticness"] = 0.6
     else:
         params["target_danceability"] = 0.6
     return params
 
+def ensure_spotify_configured():
+    if not SPOTIFY_ENABLED:
+        raise RuntimeError("Spotify client credentials are not configured.")
+
 def get_basic_auth_header():
+    ensure_spotify_configured()
     token = f"{SPOTIFY_CLIENT_ID}:{SPOTIFY_CLIENT_SECRET}"
     b64 = base64.b64encode(token.encode()).decode()
     return {"Authorization": f"Basic {b64}"}
@@ -71,6 +80,7 @@ def token_headers():
     return {"Authorization": f"Bearer {session['access_token']}"}
 
 def ensure_token():
+    ensure_spotify_configured()
     # Refresh if token expired
     if "access_token" in session and time.time() < session.get("expires_at", 0) - 30:
         return
@@ -92,6 +102,8 @@ def ensure_token():
 
 @app.route("/auth/login")
 def login():
+    if not SPOTIFY_ENABLED:
+        return jsonify({"error": "Spotify credentials are not configured"}), 503
     scope = "user-read-email"  # listing recommendations does not need playback scope [1]
     params = {
         "client_id": SPOTIFY_CLIENT_ID,
@@ -104,6 +116,8 @@ def login():
 
 @app.route("/callback")
 def callback():
+    if not SPOTIFY_ENABLED:
+        return jsonify({"error": "Spotify credentials are not configured"}), 503
     code = request.args.get("code")
     if not code:
         return jsonify({"error": "missing code"}), 400
@@ -122,12 +136,17 @@ def callback():
 
 @app.route("/whoami")
 def whoami():
-    ensure_token()
+    try:
+        ensure_token()
+    except RuntimeError as exc:
+        return jsonify({"error": str(exc)}), 503
     r = requests.get(f"{SPOTIFY_API_BASE}/me", headers=token_headers())
     return jsonify(r.json())
 
 @app.route("/recommend")
 def recommend():
+    if not SPOTIFY_ENABLED:
+        return jsonify({"error": "Spotify credentials are not configured"}), 503
     # inputs: emotion, limit, market
     emotion = (request.args.get("emotion") or "neutral").lower()
     limit = int(request.args.get("limit", 20))
@@ -162,5 +181,28 @@ def recommend():
     ]
     return jsonify({"emotion": emotion, "params": params, "tracks": tracks})
 
+@app.route("/api/status")
+def status():
+    return jsonify({"status": "ok"})
+
+@app.route("/api/recommendations")
+def api_recommendations():
+    emotion = (request.args.get("emotion") or "neutral").lower()
+    try:
+        limit = min(10, max(1, int(request.args.get("limit", 5))))
+    except (TypeError, ValueError):
+        limit = 5
+    tracks = get_recommendations_for_emotion(emotion, limit=limit)
+    return jsonify(
+        {
+            "emotion": emotion,
+            "limit": limit,
+            "tracks": tracks,
+        }
+    )
+
+app.register_blueprint(emotion_bp, url_prefix="/api/emotion")
+
 # if __name__ == "__main__":
 #     app.run(debug=True)
+
