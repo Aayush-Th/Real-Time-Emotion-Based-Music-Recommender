@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import AccountMenu from './AccountMenu';
 import LoginModal from '../auth/LoginModal';
 import SignupModal from '../auth/SignupModal';
 import './Navbar.css';
@@ -30,10 +31,14 @@ const Navbar = () => {
     <>
       <nav className="navbar">
         <div className="navbar-container">
-          <Link to="/" className="navbar-brand">
-            <span className="navbar-brand-icon">🎵</span>
-            <span className="navbar-brand-text">MoodTunes</span>
-          </Link>
+          {/* Account Menu and Brand */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <AccountMenu />
+            <Link to="/" className="navbar-brand">
+              <span className="navbar-brand-icon">🎵</span>
+              <span className="navbar-brand-text">MoodTunes</span>
+            </Link>
+          </div>
 
           <button 
             className="mobile-menu-toggle"
