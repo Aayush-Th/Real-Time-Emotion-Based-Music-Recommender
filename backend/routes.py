@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 from flask import Blueprint, request, jsonify, current_app
 
-from mongo_db import mood_record, user_preference, check_db_connection
+from mongo_db import mood_record, user_preference, users, check_db_connection
 from emotion import detect_emotion_from_image
 from recommendations import get_recommendations_for_emotion
 
@@ -205,3 +205,69 @@ def records():
     except Exception as e:
         current_app.logger.exception(f"Failed to fetch records: {e}")
         return jsonify({"error": "Failed to fetch records"}), 500
+
+
+@emotion_bp.route('/auth/register', methods=['POST'])
+def register():
+    """Register a new user (stores hashed password in MongoDB)
+
+    Expects JSON: { name, email, password }
+    """
+    payload = request.get_json(silent=True)
+    if not payload:
+        return jsonify({"error": "Missing payload"}), 400
+
+    name = payload.get('name')
+    email = payload.get('email')
+    password = payload.get('password')
+
+    if not email or not password:
+        return jsonify({"error": "email and password are required"}), 400
+
+    if not check_db_connection() or not users:
+        return jsonify({"error": "Database unavailable"}), 503
+
+    try:
+        existing = users.find_by_email(email)
+        if existing:
+            return jsonify({"error": "Email already registered"}), 409
+
+        user_doc = users.create_user(name=name, email=email, password=password)
+        # Do not auto-login; return success and prompt client to login
+        return jsonify({"message": "Registered successfully", "user": {"email": user_doc.get('email'), "name": user_doc.get('name')}}), 201
+    except Exception as e:
+        current_app.logger.exception(f"Registration failed: {e}")
+        return jsonify({"error": "Registration failed"}), 500
+
+
+@emotion_bp.route('/auth/login', methods=['POST'])
+def login():
+    """Authenticate a user.
+
+    Expects JSON: { email, password }
+    Returns: user info on success
+    """
+    payload = request.get_json(silent=True)
+    if not payload:
+        return jsonify({"error": "Missing payload"}), 400
+
+    email = payload.get('email')
+    password = payload.get('password')
+
+    if not email or not password:
+        return jsonify({"error": "email and password are required"}), 400
+
+    if not check_db_connection() or not users:
+        return jsonify({"error": "Database unavailable"}), 503
+
+    try:
+        ok, user_doc = users.verify_password(email, password)
+        if not ok:
+            return jsonify({"error": "Invalid email or password"}), 401
+
+        # Return minimal user info
+        user_info = {"email": user_doc.get('email'), "name": user_doc.get('name')}
+        return jsonify({"message": "Login successful", "user": user_info}), 200
+    except Exception as e:
+        current_app.logger.exception(f"Login failed: {e}")
+        return jsonify({"error": "Login failed"}), 500

@@ -5,6 +5,7 @@ import os
 from datetime import datetime
 from pymongo import MongoClient
 from bson.objectid import ObjectId
+from werkzeug.security import generate_password_hash, check_password_hash
 
 MONGODB_URL = os.environ.get("MONGODB_URL", "mongodb://localhost:27017")
 DB_NAME = os.environ.get("DB_NAME", "moodtunes")
@@ -152,8 +153,62 @@ class UserPreference:
 
 
 # Initialize collections
-mood_record = MoodRecord() if db else None
-user_preference = UserPreference() if db else None
+mood_record = MoodRecord() if db is not None else None
+user_preference = UserPreference() if db is not None else None
+
+
+class UserModel:
+    """Model for storing user accounts (with hashed passwords)"""
+    def __init__(self):
+        if db is not None:
+            self.collection = db["users"]
+            self.collection.create_index("email", unique=True)
+
+    def create_user(self, name, email, password):
+        if not email or not password:
+            raise ValueError("email and password are required")
+
+        hashed = generate_password_hash(password)
+        user_doc = {
+            "name": name,
+            "email": email,
+            "password_hash": hashed,
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }
+
+        try:
+            result = self.collection.insert_one(user_doc)
+            user_doc["_id"] = str(result.inserted_id)
+            # Do not return password hash
+            user_doc.pop("password_hash", None)
+            return user_doc
+        except Exception as e:
+            # Reraise to let caller handle duplicate key or other errors
+            raise
+
+    def find_by_email(self, email):
+        user = self.collection.find_one({"email": email})
+        if user:
+            user["_id"] = str(user["_id"])
+        return user
+
+    def verify_password(self, email, password):
+        user = self.collection.find_one({"email": email})
+        if not user:
+            return False, None
+        stored = user.get("password_hash")
+        if not stored:
+            return False, None
+        ok = check_password_hash(stored, password)
+        if ok:
+            user_copy = {k: v for k, v in user.items() if k != "password_hash"}
+            user_copy["_id"] = str(user_copy.get("_id"))
+            return True, user_copy
+        return False, None
+
+
+users = UserModel() if db is not None else None
 
 
 def check_db_connection():
