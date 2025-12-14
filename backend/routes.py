@@ -271,3 +271,54 @@ def login():
     except Exception as e:
         current_app.logger.exception(f"Login failed: {e}")
         return jsonify({"error": "Login failed"}), 500
+
+
+@emotion_bp.route('/debug/users', methods=['GET'])
+def debug_users():
+    """Debug endpoint to list users (no password hashes). Enabled when ALLOW_DEBUG env var is 'true'."""
+    from os import environ
+    if environ.get('ALLOW_DEBUG', 'false').lower() != 'true':
+        return jsonify({"error": "Debug endpoints are disabled"}), 403
+
+    if not check_db_connection() or not users:
+        return jsonify({"error": "Database unavailable"}), 503
+
+    try:
+        docs = list(users.collection.find({}, {"password_hash": 0}).limit(100))
+        # Convert ObjectId to string
+        for d in docs:
+            d["_id"] = str(d.get("_id"))
+        return jsonify({"users": docs})
+    except Exception as e:
+        current_app.logger.exception(f"Failed to list users: {e}")
+        return jsonify({"error": "Failed to list users"}), 500
+
+
+@emotion_bp.route('/debug/seed_user', methods=['POST'])
+def debug_seed_user():
+    """Create a test user for local development. Enabled only when ALLOW_DEBUG='true'."""
+    from os import environ
+    if environ.get('ALLOW_DEBUG', 'false').lower() != 'true':
+        return jsonify({"error": "Debug endpoints are disabled"}), 403
+
+    payload = request.get_json(silent=True) or {}
+    name = payload.get('name', 'Dev User')
+    email = payload.get('email', 'dev@example.com')
+    password = payload.get('password', 'password123')
+
+    if not email or not password:
+        return jsonify({"error": "email and password are required"}), 400
+
+    if not check_db_connection() or not users:
+        return jsonify({"error": "Database unavailable"}), 503
+
+    try:
+        existing = users.find_by_email(email)
+        if existing:
+            return jsonify({"message": "User already exists", "user": {"email": existing.get('email'), "name": existing.get('name')}}), 200
+
+        user_doc = users.create_user(name=name, email=email, password=password)
+        return jsonify({"message": "Seeded test user", "user": {"email": user_doc.get('email'), "name": user_doc.get('name')}}), 201
+    except Exception as e:
+        current_app.logger.exception(f"Failed to seed test user: {e}")
+        return jsonify({"error": "Failed to seed test user"}), 500
