@@ -79,3 +79,31 @@
 .dashboard-button:hover {
   background-color: var(--color-primary-dark);
 }
+
+.dashboard-detector {
+  margin-top: 2.75rem;
+}
+
+/* Controls row used for button groups and inputs — wraps on small screens to prevent overflow */
+.controls-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.controls-row .btn {
+  min-width: 120px;
+  flex: 0 1 auto;
+}
+
+@media (max-width: 600px) {
+  .controls-row .btn,
+  .controls-row input,
+  .controls-row select {
+    flex: 1 1 100%;
+    min-width: 0;
+    white-space: normal;
+  }
+}
