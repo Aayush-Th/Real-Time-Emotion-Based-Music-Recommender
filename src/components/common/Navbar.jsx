@@ -31,13 +31,19 @@ const Navbar = () => {
     <>
       <nav className="navbar">
         <div className="navbar-container">
-          {/* Account Menu and Brand */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <AccountMenu />
-            <Link to="/" className="navbar-brand">
-              <span className="navbar-brand-icon">🎵</span>
-              <span className="navbar-brand-text">MoodTunes</span>
-            </Link>
+          {/* Left side: account (hamburger) + brand */}
+          <div className="navbar-left">
+            <div className="account-area-left">
+              {currentUser && (
+                <AccountMenu />
+              )}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <Link to="/" className="navbar-brand">
+                <span className="navbar-brand-icon">🎵</span>
+                <span className="navbar-brand-text">MoodTunes</span>
+              </Link>
+            </div>
           </div>
 
           <button 
@@ -59,18 +65,16 @@ const Navbar = () => {
                 Dashboard
               </Link>
             )}
+            {currentUser && (
+              <Link to="/experience" className="navbar-link" onClick={() => setMobileMenuOpen(false)}>
+                Experience
+              </Link>
+            )}
             <a href="#features" className="navbar-link" onClick={() => setMobileMenuOpen(false)}>
               Features
             </a>
 
-            {currentUser ? (
-              <div className="user-menu">
-                <span className="user-email">{currentUser.email}</span>
-                <button className="btn btn--secondary" onClick={handleLogout}>
-                  Logout
-                </button>
-              </div>
-            ) : (
+            {!currentUser && (
               <div className="auth-buttons">
                 <button 
                   className="btn btn--secondary" 

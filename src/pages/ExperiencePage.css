@@ -1,0 +1,354 @@
+.experience-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 2rem 0;
+}
+
+.experience-hero {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 3rem 2rem;
+  text-align: center;
+  color: white;
+}
+
+.hero-content {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.section-badge {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  backdrop-filter: blur(10px);
+}
+
+.hero-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  line-height: 1.2;
+}
+
+.hero-subtitle {
+  font-size: 1.1rem;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+.experience-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem 3rem;
+}
+
+.experience-card {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 2rem;
+  background: white;
+  border-radius: 24px;
+  padding: 2.5rem;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+}
+
+@media (max-width: 768px) {
+  .experience-card {
+    grid-template-columns: 1fr;
+    padding: 1.5rem;
+  }
+
+  .hero-title {
+    font-size: 1.8rem;
+  }
+}
+
+.preferences-panel,
+.detector-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.preferences-panel h2,
+.detector-panel h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.pref-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.pref-field label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.pref-field select {
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: 2px solid var(--color-card-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.pref-field select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.detector-wrapper {
+  background: var(--color-background);
+  border-radius: 12px;
+  padding: 1rem;
+  border: 2px dashed var(--color-card-border);
+  min-height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.detect-btn {
+  width: 100%;
+  margin-top: auto;
+}
+
+.error-message {
+  padding: 1rem;
+  background: rgba(220, 38, 38, 0.1);
+  color: #dc2626;
+  border-radius: 8px;
+  border-left: 4px solid #dc2626;
+  font-weight: 500;
+  margin: 0;
+}
+
+.success-message {
+  padding: 1rem;
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+  border-radius: 8px;
+  border-left: 4px solid #22c55e;
+  font-weight: 500;
+  margin: 0;
+}
+
+.results-section {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem 3rem;
+}
+
+.emotion-result {
+  margin-bottom: 2rem;
+}
+
+.emotion-box {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  background: white;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.emotion-emoji {
+  font-size: 4rem;
+}
+
+.emotion-details h3 {
+  font-size: 1.5rem;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.confidence {
+  color: var(--color-text-secondary);
+  margin: 0.5rem 0 0;
+}
+
+.recommendations-box {
+  background: white;
+  border-radius: 24px;
+  padding: 2rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.recommendations-box h2 {
+  font-size: 1.5rem;
+  color: var(--color-text);
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+}
+
+.recommendations-subtitle {
+  color: var(--color-text-secondary);
+  margin-bottom: 1.5rem;
+}
+
+.recommendations-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.recommendation-card {
+  background: var(--color-background);
+  border: 1px solid var(--color-card-border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.recommendation-card:hover {
+  border-color: #667eea;
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.15);
+  transform: translateY(-4px);
+}
+
+.track-number {
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.track-info {
+  flex: 1;
+}
+
+.track-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0 0 0.5rem;
+}
+
+.track-artist {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  margin: 0 0 0.3rem;
+}
+
+.track-album {
+  font-size: 0.85rem;
+  color: #999;
+  margin: 0;
+}
+
+.spotify-link {
+  display: inline-block;
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background: #1DB954;
+  color: white;
+  text-decoration: none;
+  border-radius: 24px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+}
+
+.spotify-link:hover {
+  background: #1ed760;
+  transform: scale(1.05);
+}
+
+.recommendations-note {
+  background: rgba(102, 126, 234, 0.1);
+  border-radius: 8px;
+  border-left: 4px solid #667eea;
+  padding: 1rem;
+  color: #667eea;
+  font-size: 0.9rem;
+}
+
+.recommendations-note p {
+  margin: 0;
+}
+
+.info-section {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem 3rem;
+}
+
+.info-card {
+  background: white;
+  border-radius: 24px;
+  padding: 2rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.info-card h3 {
+  font-size: 1.25rem;
+  color: var(--color-text);
+  margin-top: 0;
+}
+
+.info-steps {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+}
+
+.info-steps li {
+  padding: 1rem;
+  background: var(--color-background);
+  border-radius: 8px;
+  border-left: 4px solid #667eea;
+}
+
+@media (max-width: 768px) {
+  .experience-page {
+    padding: 2rem 0;
+  }
+
+  .results-section {
+    padding: 0 1rem 2rem;
+  }
+
+  .emotion-box {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .recommendations-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .info-steps {
+    grid-template-columns: 1fr;
+  }
+}
+

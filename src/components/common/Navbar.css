@@ -16,6 +16,17 @@
   align-items: center;
 }
 
+.navbar-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.account-area-left {
+  display: flex;
+  align-items: center;
+}
+
 .navbar-brand {
   display: flex;
   align-items: center;

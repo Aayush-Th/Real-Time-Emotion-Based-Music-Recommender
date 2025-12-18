@@ -8,11 +8,11 @@ const LoginModal = ({ isOpen, onClose, onSwitchToSignup }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    const result = login(email, password);
+    const result = await login(email, password);
     if (result.success) {
       onClose();
       setEmail('');
@@ -32,7 +32,7 @@ const LoginModal = ({ isOpen, onClose, onSwitchToSignup }) => {
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
 
-        <form onsubmit={handleSubmit} className="modal-form">
+        <form onSubmit={handleSubmit} className="modal-form">
           {error && <div className="error-message">{error}</div>}
           
           <div className="form-group">

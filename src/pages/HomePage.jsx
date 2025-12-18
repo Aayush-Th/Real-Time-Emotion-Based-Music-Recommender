@@ -1,10 +1,18 @@
 import React from 'react';
 import './HomePage.css';
+import { useNavigate } from 'react-router-dom';
 
 const HomePage = () => {
+  const navigate = useNavigate();
+
   const scrollToFeatures = () => {
     document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
   };
+
+    const goToSetup = () => {
+    navigate('/setup');
+  };
+
 
   return (
     <main className="home-page">
@@ -26,7 +34,7 @@ const HomePage = () => {
           </p>
           
           <div className="hero-buttons">
-            <button className="btn btn--primary btn--large">
+            <button className="btn btn--primary btn--large" onClick={goToSetup}>
               <span>Get Started Free</span>
               <span className="btn-icon">→</span>
             </button>
@@ -170,7 +178,7 @@ const HomePage = () => {
           <p className="cta-subtitle">
             Join thousands of users who have discovered the power of emotion-based music recommendations
           </p>
-          <button className="btn btn--primary btn--large">
+          <button className="btn btn--primary btn--large" onClick={goToSetup}>
             <span>Start Your Journey</span>
             <span className="btn-icon">→</span>
           </button>

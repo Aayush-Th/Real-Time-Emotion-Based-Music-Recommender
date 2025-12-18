@@ -9,7 +9,7 @@ const SignupModal = ({ isOpen, onClose, onSwitchToLogin }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -18,12 +18,13 @@ const SignupModal = ({ isOpen, onClose, onSwitchToLogin }) => {
       return;
     }
 
-    const result = signup(name, email, password);
+    const result = await signup(name, email, password);
     if (result.success) {
-      onClose();
+      // After successful registration, prompt user to login next
       setName('');
       setEmail('');
       setPassword('');
+      onSwitchToLogin();
     } else {
       setError(result.error);
     }
