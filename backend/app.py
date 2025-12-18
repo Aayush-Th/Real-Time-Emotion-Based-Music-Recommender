@@ -188,18 +188,74 @@ def status():
 @app.route("/api/recommendations")
 def api_recommendations():
     emotion = (request.args.get("emotion") or "neutral").lower()
+    language = (request.args.get("language") or "").lower()
+    region = request.args.get("region") or "IN"
     try:
-        limit = min(10, max(1, int(request.args.get("limit", 5))))
+        limit = min(50, max(1, int(request.args.get("limit", 5))))
     except (TypeError, ValueError):
         limit = 5
+
+    # Try Spotify recommendations when token is available, otherwise fall back to local library
+    try:
+        try:
+            # ensure token (will refresh if needed) - may raise if not configured
+            ensure_token()
+
+            # Map language to seed genres (best-effort)
+            LANG_GENRES = {
+                'hi': ['bollywood', 'indian'],
+                'en': ['pop', 'dance'],
+                'es': ['latin', 'reggaeton'],
+                'pt': ['brazil', 'mpb'],
+                'fr': ['french'],
+                'de': ['german'],
+            }
+
+            cfg = EMOTION_MAPPING.get(emotion, EMOTION_MAPPING['neutral'])
+            seed_genres = LANG_GENRES.get(language, cfg.get('seed_genres', ['pop'])[:3])
+
+            params = {
+                'limit': min(limit, 50),
+                'market': region,
+                'seed_genres': ','.join(seed_genres),
+                'target_valence': cfg['target_valence'],
+                'target_energy': cfg['target_energy'],
+            }
+            # allow explicit seed_genres override from query (comma-separated)
+            explicit_seed_genres = request.args.get('seed_genres')
+            if explicit_seed_genres:
+                params['seed_genres'] = explicit_seed_genres
+
+            r = requests.get(f"{SPOTIFY_API_BASE}/recommendations", params=params, headers=token_headers(), timeout=10)
+            if r.ok:
+                data = r.json()
+                tracks = [
+                    {
+                        'id': t['id'],
+                        'name': t['name'],
+                        'artists': ', '.join(a['name'] for a in t['artists']),
+                        'album_image': (t['album']['images'][0]['url'] if t['album'].get('images') else None),
+                        'preview_url': t.get('preview_url'),
+                        'external_url': t['external_urls']['spotify'],
+                    }
+                    for t in data.get('tracks', [])
+                ]
+                return jsonify({"emotion": emotion, "limit": limit, "tracks": tracks})
+            else:
+                current_app.logger.warning(f"Spotify recommendations failed: {r.status_code} {r.text}")
+        except Exception as spotify_exc:
+            current_app.logger.info(f"Spotify recommendations not available: {spotify_exc}")
+    except Exception:
+        # ensure_token() raised or something went wrong – fall back
+        pass
+
+    # Fallback to local recommendation library
     tracks = get_recommendations_for_emotion(emotion, limit=limit)
-    return jsonify(
-        {
-            "emotion": emotion,
-            "limit": limit,
-            "tracks": tracks,
-        }
-    )
+    return jsonify({
+        "emotion": emotion,
+        "limit": limit,
+        "tracks": tracks,
+    })
 
 app.register_blueprint(emotion_bp, url_prefix="/api")
 

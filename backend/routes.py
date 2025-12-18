@@ -4,7 +4,7 @@ import json
 
 import cv2
 import numpy as np
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, session
 
 from mongo_db import mood_record, user_preference, users, check_db_connection
 from emotion import detect_emotion_from_image
@@ -46,7 +46,74 @@ def detect():
 
     try:
         label, confidence = detect_emotion_from_image(image)
-        tracks = get_recommendations_for_emotion(label, limit=limit)
+
+        # Try Spotify recommendations first when configured and session has tokens
+        tracks = None
+        try:
+            from os import environ
+            import requests as _requests
+
+            SPOTIFY_ENABLED = bool(environ.get('SPOTIFY_CLIENT_ID') and environ.get('SPOTIFY_CLIENT_SECRET'))
+            if SPOTIFY_ENABLED and 'access_token' in session:
+                # map simple emotion targets (valence/energy) similar to app.py
+                EMOTION_CFG = {
+                    'happy': dict(target_valence=0.85, target_energy=0.7),
+                    'sad': dict(target_valence=0.2, target_energy=0.3),
+                    'angry': dict(target_valence=0.2, target_energy=0.85),
+                    'disgust': dict(target_valence=0.1, target_energy=0.4),
+                    'fear': dict(target_valence=0.25, target_energy=0.6),
+                    'surprise': dict(target_valence=0.7, target_energy=0.8),
+                    'neutral': dict(target_valence=0.5, target_energy=0.5),
+                }
+
+                # language -> seed genres mapping (best-effort; Spotify genre availability varies)
+                LANG_GENRES = {
+                    'hi': ['bollywood', 'indian'],
+                    'en': ['pop', 'dance'],
+                    'es': ['latin', 'reggaeton'],
+                    'pt': ['brazil', 'mpb'],
+                    'fr': ['french'],
+                    'de': ['german'],
+                }
+
+                lang = (metadata.get('language') or '').lower()
+                region = metadata.get('region') or 'IN'
+
+                cfg = EMOTION_CFG.get(label, EMOTION_CFG['neutral'])
+                params = {
+                    'limit': min(limit, 50),
+                    'market': region,
+                    'seed_genres': ','.join(LANG_GENRES.get(lang, cfg.get('seed_genres', ['pop']) if cfg.get('seed_genres') else ['pop'])),
+                    'target_valence': cfg['target_valence'],
+                    'target_energy': cfg['target_energy'],
+                }
+
+                # call Spotify recommendations endpoint with our session token
+                spotify_res = _requests.get('https://api.spotify.com/v1/recommendations', params=params, headers={
+                    'Authorization': f"Bearer {session.get('access_token')}"
+                }, timeout=10)
+
+                if spotify_res.ok:
+                    sdata = spotify_res.json()
+                    tracks = [
+                        {
+                            'id': t['id'],
+                            'name': t['name'],
+                            'artists': ', '.join(a['name'] for a in t['artists']),
+                            'album_image': (t['album']['images'][0]['url'] if t['album'].get('images') else None),
+                            'preview_url': t.get('preview_url'),
+                            'external_url': t['external_urls']['spotify'],
+                        }
+                        for t in sdata.get('tracks', [])
+                    ]
+                else:
+                    current_app.logger.warning(f"Spotify recommendations failed: {spotify_res.status_code} {spotify_res.text}")
+        except Exception as spotify_exc:
+            current_app.logger.exception(f"Spotify recommendation attempt failed: {spotify_exc}")
+
+        # Fall back to built-in library if spotify didn't produce tracks
+        if not tracks:
+            tracks = get_recommendations_for_emotion(label, limit=limit)
         metadata = payload.get("metadata", {}) or {}
         
         # Save to MongoDB if available
@@ -273,6 +340,18 @@ def login():
         return jsonify({"error": "Login failed"}), 500
 
 
+@emotion_bp.route('/auth/logout', methods=['POST'])
+def auth_logout():
+    """Clear server-side session (Spotify tokens etc.) and return success."""
+    try:
+        for k in ('access_token', 'refresh_token', 'expires_at'):
+            session.pop(k, None)
+        return jsonify({"message": "Logged out"}), 200
+    except Exception as e:
+        current_app.logger.exception(f"Logout failed: {e}")
+        return jsonify({"error": "Logout failed"}), 500
+
+
 @emotion_bp.route('/debug/users', methods=['GET'])
 def debug_users():
     """Debug endpoint to list users (no password hashes). Enabled when ALLOW_DEBUG env var is 'true'."""
@@ -322,3 +401,105 @@ def debug_seed_user():
     except Exception as e:
         current_app.logger.exception(f"Failed to seed test user: {e}")
         return jsonify({"error": "Failed to seed test user"}), 500
+
+
+@emotion_bp.route('/ai/generate_params', methods=['POST'])
+def ai_generate_params():
+    """Generate Spotify recommendation params from user emotion/language/extra info.
+
+    Accepts JSON: { emotion, language, extra_info }
+    Returns JSON with the fixed template (emotion, language, market, seed_genres, seed_artists_description, extra_keywords)
+    If OPENAI_API_KEY is configured, attempt to call the OpenAI Chat Completions API and parse JSON out of it. Otherwise return a deterministic fallback.
+    """
+    payload = request.get_json(silent=True) or {}
+    emotion = (payload.get('emotion') or '').lower()
+    language = (payload.get('language') or '').lower()
+    extra = payload.get('extra_info') or ''
+
+    # Validate inputs
+    if not emotion or not language:
+        return jsonify({"error": "emotion and language are required"}), 400
+
+    # Build system + user prompt per requested template
+    system = (
+        "You are an assistant that converts user mood and language preferences into Spotify recommendation parameters.\n"
+        "Always respond in JSON with these fields: emotion, language, market, seed_genres, seed_artists_description, extra_keywords.\n"
+        "market is a 2-letter country code. seed_genres is a short list of Spotify-style genres. "
+        "seed_artists_description is a short text description of 2–3 example artists in that language and mood (not IDs). "
+        "extra_keywords are mood/scene words for searching or explaining."
+    )
+
+    user_prompt = (
+        f"User emotion: \"{emotion}\"\nPreferred language: \"{language}\"\nExtra info: \"{extra}\"\n"
+        "Generate Spotify parameters and always return a single valid JSON object with the exact fields specified."
+    )
+
+    # Try OpenAI if key is available
+    from os import environ
+    OPENAI_KEY = environ.get('OPENAI_API_KEY')
+    if OPENAI_KEY:
+        try:
+            # Call OpenAI chat completions (HTTP) to keep dependency minimal
+            headers = {
+                'Authorization': f'Bearer {OPENAI_KEY}',
+                'Content-Type': 'application/json',
+            }
+            body = {
+                'model': 'gpt-4o-mini',
+                'messages': [
+                    {'role': 'system', 'content': system},
+                    {'role': 'user', 'content': user_prompt},
+                ],
+                'max_tokens': 300,
+                'temperature': 0.4,
+            }
+            import requests as _requests
+            r = _requests.post('https://api.openai.com/v1/chat/completions', json=body, headers=headers, timeout=10)
+            r.raise_for_status()
+            response_text = r.json()['choices'][0]['message']['content']
+
+            # Try to extract JSON from the assistant output
+            import re, json as _json
+            m = re.search(r'\{[\s\S]*\}', response_text)
+            if not m:
+                return jsonify({"error": "AI did not return JSON"}), 502
+            parsed = _json.loads(m.group(0))
+
+            # Basic validation
+            required = ['emotion', 'language', 'market', 'seed_genres', 'seed_artists_description', 'extra_keywords']
+            if not all(k in parsed for k in required):
+                return jsonify({"error": "AI returned JSON missing required fields", "data": parsed}), 502
+            return jsonify(parsed)
+        except Exception as e:
+            current_app.logger.exception(f"AI generation failed: {e}")
+
+    # Fallback deterministic generator
+    LANG_GENRES = {
+        'hi': ['bollywood', 'desi', 'dance'],
+        'en': ['pop', 'dance'],
+        'es': ['latin', 'reggaeton'],
+        'pt': ['brazil', 'mpb'],
+        'fr': ['french', 'chanson'],
+        'de': ['german', 'schlager'],
+    }
+
+    market = 'IN' if language == 'hi' else 'US'
+    seed_genres = LANG_GENRES.get(language, ['pop'])[:3]
+    seed_artists_description = (
+        'Popular upbeat artists and playback singers in the language' if emotion == 'happy' else
+        'Melancholic, calm artists with emotive vocals' if emotion == 'sad' else
+        'Popular artists matching the mood in that language'
+    )
+    extra_keywords = [emotion, 'mood', 'playlist']
+    if extra:
+        extra_keywords += [x.strip() for x in extra.split(',') if x.strip()]
+
+    out = {
+        'emotion': emotion,
+        'language': language,
+        'market': market,
+        'seed_genres': seed_genres,
+        'seed_artists_description': seed_artists_description,
+        'extra_keywords': extra_keywords,
+    }
+    return jsonify(out)
